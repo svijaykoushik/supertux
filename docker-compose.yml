@@ -1,0 +1,18 @@
+services:
+  game-supertux:
+    build:
+      context: .
+      dockerfile: Dockerfile.wasm
+    container_name: game-supertux
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 3s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M

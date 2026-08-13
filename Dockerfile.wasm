@@ -1,0 +1,74 @@
+# Stage 1: Build SuperTux for WebAssembly
+FROM ubuntu:22.04 AS builder
+
+# Prevent tzdata and other interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install dependencies required by emscripten, vcpkg, and SuperTux
+RUN apt-get update && apt-get install -y \
+    git \
+    cmake \
+    build-essential \
+    curl \
+    zip \
+    rsync \
+    tar \
+    unzip \
+    pkg-config \
+    ninja-build \
+    python3 \
+    python-is-python3 \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Work in /opt for tool installations
+WORKDIR /opt
+
+# Install emsdk
+RUN git clone https://github.com/emscripten-core/emsdk.git && \
+    cd emsdk && \
+    ./emsdk install latest && \
+    ./emsdk activate latest
+
+# Install vcpkg
+ENV VCPKG_INSTALLATION_ROOT=/opt/vcpkg
+RUN git clone https://github.com/microsoft/vcpkg.git && \
+    cd vcpkg && \
+    ./bootstrap-vcpkg.sh && \
+    ./vcpkg integrate install
+
+# Copy application source code
+WORKDIR /app
+
+# Copy the rest of the application source code and assets
+COPY . .
+
+# Configure and Build SuperTux
+RUN /bin/bash -c "source /opt/emsdk/emsdk_env.sh && \
+    mkdir -p build && \
+    cd build && \
+    emcmake cmake .. -DCMAKE_BUILD_TYPE=Release -DWARNINGS=ON \
+        -DCMAKE_TOOLCHAIN_FILE=${VCPKG_INSTALLATION_ROOT}/scripts/buildsystems/vcpkg.cmake \
+        -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=/opt/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake \
+        -DVCPKG_TARGET_TRIPLET=wasm32-emscripten \
+        -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+        -DVCPKG_MANIFEST_FEATURES=core && \
+    rsync -aP ../data/ data/ && \
+    emmake make -j$(nproc) && \
+    cp template.html supertux2.html && \
+    mkdir upload/ && \
+    mv supertux2* upload/ && \
+    cd upload/ && \
+    mv supertux2.html index.html"
+
+# Stage 2: Serve the application using nginx
+FROM nginx:alpine
+
+# Copy the built WASM app and HTML to nginx html root
+COPY --from=builder /app/build/upload/ /usr/share/nginx/html/
+
+# Expose port 80
+EXPOSE 80
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]
