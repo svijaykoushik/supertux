@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # Stage 1: Build SuperTux for WebAssembly
 FROM ubuntu:22.04 AS builder
 
@@ -44,7 +45,11 @@ WORKDIR /app
 COPY . .
 
 # Configure and Build SuperTux
-RUN /bin/bash -c "source /opt/emsdk/emsdk_env.sh && \
+RUN --mount=type=cache,target=/opt/vcpkg/downloads \
+    --mount=type=cache,target=/opt/vcpkg/buildtrees \
+    --mount=type=cache,target=/opt/vcpkg/packages \
+    --mount=type=cache,target=/root/.cache/vcpkg \
+    /bin/bash -c "source /opt/emsdk/emsdk_env.sh && \
     mkdir -p build && \
     cd build && \
     emcmake cmake .. -DCMAKE_BUILD_TYPE=Release -DWARNINGS=ON \
@@ -54,7 +59,7 @@ RUN /bin/bash -c "source /opt/emsdk/emsdk_env.sh && \
         -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
         -DVCPKG_MANIFEST_FEATURES=core && \
     rsync -aP ../data/ data/ && \
-    emmake make -j$(nproc) && \
+    emmake make -j4 && \
     cp template.html supertux2.html && \
     mkdir upload/ && \
     mv supertux2* upload/ && \

@@ -186,13 +186,14 @@ add_package(TARGET Freetype
 #     PKG RAQM PKG_USE RAQM CONFIG PKG_CONFIG libraqm raqm)
 # endif()
 
+add_package(TARGET SDL3
+  PKG SDL3 PKG_USE SDL3::SDL3 CONFIG REQUIRED PKG_CONFIG sdl3 SDL3
+  ${SUPERTUX_ANDROID_PREFER_PKGCONF})
+add_package(TARGET SDL3_image
+  PKG SDL3_image PKG_USE SDL3_image::SDL3_image CONFIG REQUIRED PKG_CONFIG SDL3_image sdl3_image
+  ${SUPERTUX_ANDROID_PREFER_PKGCONF})
+
 if(NOT EMSCRIPTEN)
-  add_package(TARGET SDL3
-    PKG SDL3 PKG_USE SDL3::SDL3 CONFIG REQUIRED PKG_CONFIG sdl3 SDL3
-    ${SUPERTUX_ANDROID_PREFER_PKGCONF})
-  add_package(TARGET SDL3_image
-    PKG SDL3_image PKG_USE SDL3_image::SDL3_image CONFIG REQUIRED PKG_CONFIG SDL3_image sdl3_image
-    ${SUPERTUX_ANDROID_PREFER_PKGCONF})
   add_package(TARGET SDL3_ttf
     PKG SDL3_ttf PKG_USE SDL3_ttf::SDL3_ttf CONFIG REQUIRED PKG_CONFIG SDL3_ttf sdl3_ttf)
   add_package(TARGET libcurl
@@ -442,7 +443,7 @@ else()
 endif()
 
 target_link_libraries(supertux2 PUBLIC
-  tinygettext sexp SDL_SavePNG SDL3_ttf
+  tinygettext sexp SDL_SavePNG SDL3_ttf SDL3_image SDL3
   PartioZip OpenAL FindLocale obstack glm fmt PhysFS)
 target_compile_definitions(supertux2 PUBLIC GLM_ENABLE_EXPERIMENTAL)
 if(NOT EMSCRIPTEN)
