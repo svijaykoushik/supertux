@@ -1,0 +1,35 @@
+# Investigation Report: SuperTux WebAssembly Build & Asset Loading Issues
+
+## Status
+* **Status**: Concluded
+* **Conclusion**: Fixed
+
+---
+
+## 1. Issue Summary
+1. **Runtime Browser Error**: `RuntimeError: Aborted(missing function: IMG_Load_IO)` on page load.
+2. **Asset Loading Errors**: Nginx returned `403 Forbidden` for `supertux2_bkg.png` and other assets, causing the game loader to oscillate between loading `0/1 of 2 assets`.
+3. **Slow/Uncached Dependencies**: Recompilation of `vcpkg` dependencies during docker builds was extremely slow and took ~40-50 minutes on each build run.
+
+---
+
+## 2. Root Cause Analysis
+1. **`IMG_Load_IO` missing symbol**: Emscripten compiler ports flags (`-sUSE_SDL=3`, `-sUSE_SDL_IMAGE=2`, `-sUSE_SDL_TTF=2`) in `Emscripten.cmake` conflicted with statically compiled `vcpkg` static libraries targeting `wasm32-emscripten`. This caused the Emscripten linker to omit system port definitions while neglecting the vcpkg static implementations, leaving the `IMG_Load_IO` symbol missing at runtime.
+2. **Nginx 403 Forbidden**: Copied files from the multi-stage docker build did not have sufficient read permissions for the Nginx worker process inside the Alpine base image, resulting in permission denials on stat assets.
+3. **vcpkg Dependency Caching**: The standard docker build context did not persist intermediate vcpkg downloads or target compilation trees across docker builds.
+
+---
+
+## 3. Implemented Solutions
+1. **Cache vcpkg Directory in Docker**: Added BuildKit cache mounts (`--mount=type=cache`) in `Dockerfile.wasm` to preserve the `/root/.cache/vcpkg` and `/opt/vcpkg/downloads` folders across rebuilds. This reduced subsequent dependency build times to virtually zero.
+2. **Resolve Nginx Permissions**: Added `RUN chmod -R 755 /usr/share/nginx/html/` to the runtime stage in `Dockerfile.wasm` to grant the Nginx process read permissions to the assets.
+3. **Fix Linker Symbol Conflicts**:
+   - Removed Emscripten's built-in ports flags from `mk/cmake/SuperTux/Emscripten.cmake`.
+   - Modified `CMakeLists.txt` to explicitly pull in and link against static packages compiled by `vcpkg` (`SDL3`, `SDL3_image`, `SDL3_ttf`, `Ogg`, `Vorbis`, `VorbisFile`) when targeting Emscripten.
+
+---
+
+## 4. Verification & Conclusion
+* Tested inside a headless Chromium instance via `agent-browser`.
+* Verified that Nginx logs now successfully return `200 OK` for the large asset bundle `supertux2.data` (326.6 MB) and the wasm file `supertux2.wasm` (9.13 MB).
+* Verified that the loader completes file extraction into the MEMFS filesystem (5,149 files loaded) and successfully displays the SuperTux Main Menu screen without runtime errors or crashes.

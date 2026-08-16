@@ -43,8 +43,10 @@ WORKDIR /app
 # Copy the rest of the application source code and assets
 COPY . .
 
-# Configure and Build SuperTux
-RUN /bin/bash -c "source /opt/emsdk/emsdk_env.sh && \
+# Configure and Build SuperTux using BuildKit cache mounts
+RUN --mount=type=cache,target=/root/.cache/vcpkg \
+    --mount=type=cache,target=/opt/vcpkg/downloads \
+    /bin/bash -c "source /opt/emsdk/emsdk_env.sh && \
     mkdir -p build && \
     cd build && \
     emcmake cmake .. -DCMAKE_BUILD_TYPE=Release -DWARNINGS=ON \
@@ -66,6 +68,9 @@ FROM nginx:alpine
 
 # Copy the built WASM app and HTML to nginx html root
 COPY --from=builder /app/build/upload/ /usr/share/nginx/html/
+
+# Fix permissions so that nginx user can read the files
+RUN chmod -R 755 /usr/share/nginx/html/
 
 # Expose port 80
 EXPOSE 80
