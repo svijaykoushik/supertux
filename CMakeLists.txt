@@ -186,16 +186,20 @@ add_package(TARGET Freetype
 #     PKG RAQM PKG_USE RAQM CONFIG PKG_CONFIG libraqm raqm)
 # endif()
 
+if(EMSCRIPTEN)
+  include(SuperTux/Emscripten)
+endif()
+
 add_package(TARGET SDL3
   PKG SDL3 PKG_USE SDL3::SDL3 CONFIG REQUIRED PKG_CONFIG sdl3 SDL3
   ${SUPERTUX_ANDROID_PREFER_PKGCONF})
 add_package(TARGET SDL3_image
   PKG SDL3_image PKG_USE SDL3_image::SDL3_image CONFIG REQUIRED PKG_CONFIG SDL3_image sdl3_image
   ${SUPERTUX_ANDROID_PREFER_PKGCONF})
+add_package(TARGET SDL3_ttf
+  PKG SDL3_ttf PKG_USE SDL3_ttf::SDL3_ttf CONFIG REQUIRED PKG_CONFIG SDL3_ttf sdl3_ttf)
 
 if(NOT EMSCRIPTEN)
-  add_package(TARGET SDL3_ttf
-    PKG SDL3_ttf PKG_USE SDL3_ttf::SDL3_ttf CONFIG REQUIRED PKG_CONFIG SDL3_ttf sdl3_ttf)
   add_package(TARGET libcurl
     PKG CURL PKG_USE CURL::libcurl PKG_CONFIG libcurl)
   if(ENABLE_NETWORKING)
@@ -204,15 +208,14 @@ if(NOT EMSCRIPTEN)
   endif()
   add_package(TARGET OpenAL
     PKG OpenAL PKG_USE OpenAL::OpenAL CONFIG REQUIRED PKG_CONFIG OpenAL openal)
-  add_package(TARGET Ogg
-    PKG Ogg PKG_USE Ogg::ogg CONFIG REQUIRED PKG_CONFIG ogg)
-  add_package(TARGET Vorbis
-    PKG Vorbis PKG_USE Vorbis::vorbis CONFIG REQUIRED PKG_CONFIG vorbis)
-  add_package(TARGET VorbisFile
-    PKG Vorbis PKG_USE Vorbis::vorbisfile CONFIG REQUIRED PKG_CONFIG vorbisfile)
-else()
-  include(SuperTux/Emscripten)
 endif()
+
+add_package(TARGET Ogg
+  PKG Ogg PKG_USE Ogg::ogg CONFIG REQUIRED PKG_CONFIG ogg)
+add_package(TARGET Vorbis
+  PKG Vorbis PKG_USE Vorbis::vorbis CONFIG REQUIRED PKG_CONFIG vorbis)
+add_package(TARGET VorbisFile
+  PKG Vorbis PKG_USE Vorbis::vorbisfile CONFIG REQUIRED PKG_CONFIG vorbisfile)
 
 # TODO: SDL3
 # if(TARGET RAQM AND NOT USE_SYSTEM_SDL2_TTF)
@@ -443,25 +446,29 @@ else()
 endif()
 
 target_link_libraries(supertux2 PUBLIC
-  tinygettext sexp SDL_SavePNG SDL3_ttf SDL3_image SDL3
+  tinygettext sexp SDL_SavePNG SDL3_ttf
   PartioZip OpenAL FindLocale obstack glm fmt PhysFS)
 target_compile_definitions(supertux2 PUBLIC GLM_ENABLE_EXPERIMENTAL)
-if(NOT EMSCRIPTEN)
   target_link_libraries(supertux2 PUBLIC
     # SDL3_image
     SDL3_image
-    # SDL3 main (windows?)
-    $<TARGET_NAME_IF_EXISTS:SDL3::SDL3main>
     # SDL3
     SDL3
   )
+  if(NOT EMSCRIPTEN)
+    target_link_libraries(supertux2 PUBLIC
+      # SDL3 main (windows?)
+      $<TARGET_NAME_IF_EXISTS:SDL3::SDL3main>
+    )
+  endif()
   target_link_libraries(supertux2 PUBLIC
     Ogg
     Vorbis
     VorbisFile
   )
 
-  if(ADDPKG_CURL_FOUND AND ENABLE_NETWORKING)
+  if(NOT EMSCRIPTEN)
+    if(ADDPKG_CURL_FOUND AND ENABLE_NETWORKING)
     target_link_libraries(supertux2 PUBLIC libcurl)
     set(HAVE_CURL YES)
   endif()

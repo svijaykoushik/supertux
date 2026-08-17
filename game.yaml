@@ -8,6 +8,11 @@ runtime:
 
 hosting:
   hostname: supertux.localhost
+  capabilities:
+    - autoplay
+    - fullscreen
+    - gamepad
+    - persistent-storage
 
 metadata:
   genre: 2D Platformer
