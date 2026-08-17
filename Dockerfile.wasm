@@ -44,6 +44,11 @@ WORKDIR /app
 # Copy the rest of the application source code and assets
 COPY . .
 
+# Number of parallel compile/link jobs. Override per-environment with
+# `--build-arg MAKE_JOBS=N` to match available CPU/RAM (each wasm compile
+# job can use 1-2GB+); left low by default to avoid OOM on constrained hosts.
+ARG MAKE_JOBS=4
+
 # Configure and Build SuperTux
 RUN --mount=type=cache,target=/opt/vcpkg/downloads \
     --mount=type=cache,target=/opt/vcpkg/buildtrees \
@@ -59,7 +64,7 @@ RUN --mount=type=cache,target=/opt/vcpkg/downloads \
         -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
         -DVCPKG_MANIFEST_FEATURES=core && \
     rsync -aP ../data/ data/ && \
-    emmake make -j4 && \
+    emmake make -j${MAKE_JOBS} && \
     cp template.html supertux2.html && \
     mkdir upload/ && \
     mv supertux2* upload/ && \
