@@ -50,6 +50,7 @@ RUN --mount=type=cache,target=/root/.cache/vcpkg \
     mkdir -p build && \
     cd build && \
     emcmake cmake .. -DCMAKE_BUILD_TYPE=Release -DWARNINGS=ON \
+        -DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON \
         -DCMAKE_TOOLCHAIN_FILE=${VCPKG_INSTALLATION_ROOT}/scripts/buildsystems/vcpkg.cmake \
         -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=/opt/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake \
         -DVCPKG_TARGET_TRIPLET=wasm32-emscripten \
